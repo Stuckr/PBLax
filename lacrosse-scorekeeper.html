@@ -359,7 +359,7 @@
     border-bottom: 1px solid var(--line);
     color: var(--muted);
     font-size: 11px;
-    max-height: 25dvh;
+    max-height: 108px;
     overflow-y: auto;
     white-space: normal;
   }
@@ -1735,12 +1735,13 @@
       return;
     }
     ticker.textContent = "";
-    state.logs.slice(-10).reverse().forEach(entry => {
+    state.logs.forEach(entry => {
       const line = document.createElement("div");
       line.className = "ticker-line";
       line.textContent = `[P${entry.period} ${entry.time}] ${entry.text}`;
       ticker.appendChild(line);
     });
+    ticker.scrollTop = ticker.scrollHeight;
   }
 
   function renderAll() {
