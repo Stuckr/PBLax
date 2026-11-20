@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Lacrosse Scorekeeping Touchpad</title>
+<style></style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="format-group">
+      <button class="fmt-btn active" data-fmt="sixes" onclick="setFormat('sixes')">SIXES</button>
+      <button class="fmt-btn" data-fmt="box" onclick="setFormat('box')">BOX</button>
+      <button class="fmt-btn" data-fmt="field" onclick="setFormat('field')">FIELD</button>
+    </div>
+    <button class="icon-btn" onclick="openSettings()">&#9881; Settings</button>
+  </div>
+
+  <div class="scoreboard">
+    <div class="team-score-box">
+      <div class="team-label" id="homeNameDisplay">HOME</div>
+      <div class="score-num" id="homeScore">0</div>
+      <div class="pen-stack" id="homePenalties"></div>
+    </div>
+
+    <div class="clock-box">
+      <div class="period-row">
+        <span>PERIOD</span>
+        <select id="periodSelect" onchange="changePeriod(this.value)"></select>
+      </div>
+      <div class="game-clock" id="gameClockDisplay">08:00</div>
+      <div class="shot-clock-row" id="shotClockRow">
+        <span style="font-size:11px;font-weight:800;color:var(--muted)">SHOT</span>
+        <span class="shot-clock" id="shotClockDisplay">30</span>
+        <button class="sc-btn" id="scPrimaryBtn" onclick="resetShotClock('primary')">30</button>
+        <button class="sc-btn" id="scSecondaryBtn" onclick="resetShotClock('secondary')" style="display:none">60</button>
+      </div>
+    </div>
+
+    <div class="team-score-box">
+      <div class="team-label" id="awayNameDisplay">AWAY</div>
+      <div class="score-num" id="awayScore">0</div>
+      <div class="pen-stack" id="awayPenalties"></div>
+    </div>
+  </div>
+
+  <div class="master-controls">
+    <button class="clock-toggle" id="clockToggleBtn" onclick="toggleClock()">START CLOCK</button>
+    <button class="undo-btn" onclick="undoLast()">UNDO LAST</button>
+  </div>
+
+  <div class="summary-strip">
+    <div id="homeSummaryWrap"></div>
+    <div id="awaySummaryWrap"></div>
+  </div>
+
+  <div class="ticker" id="ticker">Ready &mdash; Select format or tap an event on Home or Away.</div>
+
+  <div class="wings-container">
+    <div class="wing home" id="homeWing">
+      <div class="wing-header">
+        <span>HOME INPUT</span>
+        <span id="homeGoalieBadge">G: #1</span>
+      </div>
+      <div class="event-grid" id="homeGrid"></div>
+      <div class="wing-overlay" id="homeOverlay" style="display:none"></div>
+    </div>
+
+    <div class="wing away" id="awayWing">
+      <div class="wing-header">
+        <span>AWAY INPUT</span>
+        <span id="awayGoalieBadge">G: #30</span>
+      </div>
+      <div class="event-grid" id="awayGrid"></div>
+      <div class="wing-overlay" id="awayOverlay" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="settingsModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <span>Touchpad &amp; Rule Settings</span>
+        <button class="icon-btn" onclick="closeSettings()">Done</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="setting-section">
+          <h4>Environment Theme</h4>
+          <div class="setting-row">
+            <span>Display Mode</span>
+            <div>
+              <button class="fmt-btn" id="darkThemeBtn" onclick="setTheme('dark')">Dark (Arena)</button>
+              <button class="fmt-btn" id="lightThemeBtn" onclick="setTheme('light')">Light (Outdoor)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <h4>Team Colors</h4>
+          <div class="setting-row">
+            <span>Home Color</span>
+            <div class="color-swatches" id="homeSwatches"></div>
+          </div>
+          <div class="setting-row">
+            <span>Away Color</span>
+            <div class="color-swatches" id="awaySwatches"></div>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <h4>Periods &amp; Clock Rules</h4>
+          <div class="setting-row">
+            <span>Regulation Periods</span>
+            <select id="regPeriodsInput" onchange="updateTimingConfig()">
+              <option value="2">2 Halves</option>
+              <option value="4" selected>4 Quarters</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>Period Length (min)</span>
+            <input type="number" id="periodLenInput" min="1" max="30" value="8" style="width:64px" onchange="updateTimingConfig()" />
+          </div>
+          <div class="setting-row">
+            <span>OT Period Length (min)</span>
+            <input type="number" id="otLenInput" min="1" max="20" value="4" style="width:64px" onchange="updateTimingConfig()" />
+          </div>
+          <div class="setting-row">
+            <span>Shot Clock (sec, 0 = Off)</span>
+            <input type="number" id="shotClockInput" min="0" max="120" value="30" style="width:64px" onchange="updateTimingConfig()" />
+          </div>
+          <button class="sc-btn" onclick="applyClockReset()">Reset Game Clock to Current Period Length</button>
+        </div>
+
+        <div class="setting-section">
+          <h4>Scoring Options</h4>
+          <label class="toggle-item">
+            <input type="checkbox" id="secondAssistToggle" onchange="state.secondAssist = this.checked" />
+            <span>Enable Second Assist (Assist 2 prompt)</span>
+          </label>
+        </div>
+
+        <div class="setting-section">
+          <h4>Active Event Buttons</h4>
+          <div class="toggle-grid" id="eventToggles"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script>
+  const COLORS = [
+    { name: "Royal Blue", hex: "#1d4ed8" },
+    { name: "Navy", hex: "#1e3a8a" },
+    { name: "Crimson", hex: "#b91c1c" },
+    { name: "Forest", hex: "#15803d" },
+    { name: "Orange", hex: "#c2410c" },
+    { name: "Purple", hex: "#6d28d9" },
+    { name: "Gold", hex: "#eab308" },
+    { name: "Teal", hex: "#0f766e" },
+    { name: "Charcoal", hex: "#334155" },
+    { name: "Silver", hex: "#e2e8f0" }
+  ];
+
+  const ALL_EVENTS = [
+    { id: "goal", label: "Goal" },
+    { id: "shotSave", label: "Shot Save" },
+    { id: "shotWide", label: "Shot Wide" },
+    { id: "groundball", label: "Groundball" },
+    { id: "turnover", label: "Turnover" },
+    { id: "causedTO", label: "Caused TO" },
+    { id: "penalty", label: "Penalty" },
+    { id: "clearGood", label: "Clear Good" },
+    { id: "clearBad", label: "Clear Bad" },
+    { id: "faceoff", label: "Faceoff / Draw" }
+  ];
+
+  const FORMAT_DEFAULTS = {
+    sixes: {
+      periodLen: 8,
+      otLen: 4,
+      shotClock: 30,
+      secondAssist: false,
+      events: ["goal", "shotSave", "shotWide", "groundball", "turnover", "penalty"]
+    },
+    box: {
+      periodLen: 15,
+      otLen: 5,
+      shotClock: 30,
+      secondAssist: true,
+      events: ["goal", "shotSave", "shotWide", "groundball", "turnover", "penalty", "faceoff"]
+    },
+    field: {
+      periodLen: 12,
+      otLen: 4,
+      shotClock: 80,
+      secondAssist: false,
+      events: ["goal", "shotSave", "shotWide", "groundball", "turnover", "causedTO", "penalty", "clearGood", "clearBad", "faceoff"]
+    }
+  };
+
+  const state = {
+    format: "sixes",
+    theme: "dark",
+    homeColor: "#1d4ed8",
+    awayColor: "#b91c1c",
+    regPeriods: 4,
+    periodLen: 8,
+    otLen: 4,
+    shotClockMax: 30,
+    currentPeriod: "1",
+    gameSeconds: 8 * 60,
+    shotSeconds: 30,
+    running: false,
+    secondAssist: false,
+    enabledEvents: [...FORMAT_DEFAULTS.sixes.events],
+    homeRoster: [1, 3, 4, 7, 9, 11, 12, 14, 17, 19, 22, 24, 27, 33, 44],
+    awayRoster: [2, 5, 6, 8, 10, 13, 15, 18, 20, 21, 25, 28, 30, 35, 42],
+    homeScore: 0,
+    awayScore: 0,
+    penalties: { home: [], away: [] },
+    logs: [],
+    flow: null
+  };
+
+  function getContrastText(hex) {
+    const c = hex.replace("#", "");
+    const r = parseInt(c.substr(0, 2), 16);
+    const g = parseInt(c.substr(2, 2), 16);
+    const b = parseInt(c.substr(4, 2), 16);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 150 ? "#0f172a" : "#ffffff";
+  }
+
+  function hexToTint(hex, alpha = 0.16) {
+    const c = hex.replace("#", "");
+    const r = parseInt(c.substr(0, 2), 16);
+    const g = parseInt(c.substr(2, 2), 16);
+    const b = parseInt(c.substr(4, 2), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function setFormat(fmt) {
+    state.format = fmt;
+    const cfg = FORMAT_DEFAULTS[fmt];
+    state.periodLen = cfg.periodLen;
+    state.otLen = cfg.otLen;
+    state.shotClockMax = cfg.shotClock;
+    state.secondAssist = cfg.secondAssist;
+    state.enabledEvents = [...cfg.events];
+
+    document.querySelectorAll(".fmt-btn[data-fmt]").forEach(b => {
+      b.classList.toggle("active", b.dataset.fmt === fmt);
+    });
+
+    document.getElementById("periodLenInput").value = state.periodLen;
+    document.getElementById("otLenInput").value = state.otLen;
+    document.getElementById("shotClockInput").value = state.shotClockMax;
+    document.getElementById("secondAssistToggle").checked = state.secondAssist;
+
+    applyClockReset();
+    renderAll();
+  }
+
+  function setTheme(theme) {
+    state.theme = theme;
+    document.body.classList.toggle("light", theme === "light");
+    document.getElementById("darkThemeBtn").classList.toggle("active", theme === "dark");
+    document.getElementById("lightThemeBtn").classList.toggle("active", theme === "light");
+    applyWingColors();
+  }
+
+  function applyWingColors() {
+    const alpha = state.theme === "light" ? 0.14 : 0.22;
+    document.getElementById("homeWing").style.background = hexToTint(state.homeColor, alpha);
+    document.getElementById("awayWing").style.background = hexToTint(state.awayColor, alpha);
+    renderEventButtons();
+  }
+
+  function buildPeriodDropdown() {
+    const sel = document.getElementById("periodSelect");
+    const opts = [];
+    for (let i = 1; i <= state.regPeriods; i++) opts.push(String(i));
+    opts.push("OT1", "OT2", "OT3");
+    if (!opts.includes(state.currentPeriod)) state.currentPeriod = "1";
+    sel.innerHTML = opts.map(p => `<option value="${p}" ${p === state.currentPeriod ? "selected" : ""}>${p}</option>`).join("");
+  }
+
+  function changePeriod(val) {
+    state.currentPeriod = val;
+    applyClockReset();
+    renderSummaries();
+  }
+
+  function updateTimingConfig() {
+    state.regPeriods = parseInt(document.getElementById("regPeriodsInput").value, 10);
+    state.periodLen = Math.max(1, parseInt(document.getElementById("periodLenInput").value, 10) || 8);
+    state.otLen = Math.max(1, parseInt(document.getElementById("otLenInput").value, 10) || 4);
+    state.shotClockMax = Math.max(0, parseInt(document.getElementById("shotClockInput").value, 10) || 0);
+    buildPeriodDropdown();
+    updateShotClockUI();
+    renderSummaries();
+  }
+
+  function applyClockReset() {
+    const isOT = state.currentPeriod.startsWith("OT");
+    state.gameSeconds = (isOT ? state.otLen : state.periodLen) * 60;
+    state.shotSeconds = state.shotClockMax;
+    renderClocks();
+    updateShotClockUI();
+  }
+
+  function updateShotClockUI() {
+    const row = document.getElementById("shotClockRow");
+    if (state.shotClockMax === 0) {
+      row.style.visibility = "hidden";
+      return;
+    }
+    row.style.visibility = "visible";
+    const pBtn = document.getElementById("scPrimaryBtn");
+    const sBtn = document.getElementById("scSecondaryBtn");
+    pBtn.textContent = state.shotClockMax;
+    if (state.format === "field" && state.shotClockMax === 80) {
+      sBtn.style.display = "inline-block";
+      sBtn.textContent = "60";
+    } else {
+      sBtn.style.display = "none";
+    }
+  }
+
+  function resetShotClock(type) {
+    if (type === "secondary") {
+      state.shotSeconds = 60;
+    } else {
+      state.shotSeconds = state.shotClockMax;
+    }
+    renderClocks();
+  }
+
+  function formatTime(sec) {
+    const s = Math.max(0, sec);
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return `${String(m).padStart(2, "0")}:${String(rem).padStart(2, "0")}`;
+  }
+
+  function renderClocks() {
+    document.getElementById("gameClockDisplay").textContent = formatTime(state.gameSeconds);
+    document.getElementById("shotClockDisplay").textContent = state.shotSeconds;
+  }
+
+  function toggleClock() {
+    state.running = !state.running;
+    const btn = document.getElementById("clockToggleBtn");
+    btn.textContent = state.running ? "STOP CLOCK" : "START CLOCK";
+    btn.classList.toggle("running", state.running);
+  }
+
+  setInterval(() => {
+    if (!state.running) return;
+    if (state.gameSeconds > 0) state.gameSeconds--;
+    if (state.shotClockMax > 0 && state.shotSeconds > 0) state.shotSeconds--;
+
+    ["home", "away"].forEach(side => {
+      state.penalties[side].forEach(p => {
+        if (p.remaining > 0) p.remaining--;
+      });
+      state.penalties[side] = state.penalties[side].filter(p => p.remaining > 0);
+    });
+
+    if (state.gameSeconds === 0) {
+      state.running = false;
+      const btn = document.getElementById("clockToggleBtn");
+      btn.textContent = "START CLOCK";
+      btn.classList.remove("running");
+    }
+
+    renderClocks();
+    renderPenalties();
+  }, 1000);
+
+  function renderEventButtons() {
+    ["home", "away"].forEach(side => {
+      const grid = document.getElementById(side + "Grid");
+      const bg = side === "home" ? state.homeColor : state.awayColor;
+      const fg = getContrastText(bg);
+      grid.innerHTML = ALL_EVENTS
+        .filter(ev => state.enabledEvents.includes(ev.id))
+        .map(ev => `<button class="event-btn" style="background:${bg};color:${fg}" onclick="startEvent('${side}','${ev.id}')">${ev.label}</button>`)
+        .join("");
+    });
+  }
+
+  function startEvent(side, eventId) {
+    if (eventId === "clearGood" || eventId === "clearBad") {
+      recordLog({
+        side,
+        type: eventId,
+        period: state.currentPeriod,
+        time: formatTime(state.gameSeconds),
+        text: `${side.toUpperCase()} ${eventId === "clearGood" ? "Clear Good" : "Clear Failed"}`
+      });
+      return;
+    }
+
+    if (eventId === "faceoff") {
+      state.flow = { side, type: "faceoff", step: "homePlayer", homeNum: null, awayNum: null };
+      renderFlowOverlay();
+      return;
+    }
+
+    state.flow = {
+      side,
+      type: eventId,
+      step: "player",
+      player: null,
+      assist1: null,
+      assist2: null,
+      card: "None",
+      penSec: state.format === "box" ? 120 : 60
+    };
+    renderFlowOverlay();
+  }
+
+  function closeFlow() {
+    state.flow = null;
+    document.getElementById("homeOverlay").style.display = "none";
+    document.getElementById("awayOverlay").style.display = "none";
+  }
+
+  function renderFlowOverlay() {
+    const f = state.flow;
+    if (!f) return;
+
+    const targetSide = f.type === "faceoff" && f.step === "awayPlayer" ? "away" : f.side;
+    const otherSide = targetSide === "home" ? "away" : "home";
+    document.getElementById(otherSide + "Overlay").style.display = "none";
+
+    const box = document.getElementById(targetSide + "Overlay");
+    box.style.display = "flex";
+    const roster = targetSide === "home" ? state.homeRoster : state.awayRoster;
+
+    if (f.type === "faceoff") {
+      if (f.step === "homePlayer" || f.step === "awayPlayer") {
+        const who = f.step === "homePlayer" ? "HOME FO/Draw Player" : "AWAY FO/Draw Player";
+        box.innerHTML = `
+          <div class="overlay-head"><span>${who}</span><button class="cancel-btn" onclick="closeFlow()">&#10005;</button></div>
+          <div class="roster-grid">
+            <button class="num-btn unknown" onclick="pickFaceoffPlayer('?')">#? Unknown Player</button>
+            ${roster.map(n => `<button class="num-btn" onclick="pickFaceoffPlayer(${n})">#${n}</button>`).join("")}
+          </div>
+        `;
+      } else if (f.step === "winner") {
+        box.innerHTML = `
+          <div class="overlay-head"><span>Faceoff / Draw Winner</span><button class="cancel-btn" onclick="closeFlow()">&#10005;</button></div>
+          <div class="choice-stack">
+            <button class="choice-btn" onclick="finishFaceoff('home')">HOME Won (#${f.homeNum})</button>
+            <button class="choice-btn" onclick="finishFaceoff('away')">AWAY Won (#${f.awayNum})</button>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    if (f.step === "player" || f.step === "assist1" || f.step === "assist2") {
+      const titles = {
+        player: `${targetSide.toUpperCase()} &mdash; Select Player #`,
+        assist1: "Select Assist 1 #",
+        assist2: "Select Assist 2 #"
+      };
+      const disabledNums = [];
+      if (f.step === "assist1" && f.player !== "?") disabledNums.push(f.player);
+      if (f.step === "assist2") {
+        if (f.player !== "?") disabledNums.push(f.player);
+        if (f.assist1 !== "?") disabledNums.push(f.assist1);
+      }
+
+      box.innerHTML = `
+        <div class="overlay-head"><span>${titles[f.step]}</span><button class="cancel-btn" onclick="closeFlow()">&#10005;</button></div>
+        <div class="roster-grid">
+          <button class="num-btn unknown" onclick="pickPlayer('?')">#? Unknown / Team</button>
+          ${roster.map(n => `<button class="num-btn" ${disabledNums.includes(n) ? "disabled" : ""} onclick="pickPlayer(${n})">#${n}</button>`).join("")}
+        </div>
+      `;
+      return;
+    }
+
+    if (f.step === "askAssist1" || f.step === "askAssist2") {
+      const label = f.step === "askAssist1" ? "Was Goal Assisted?" : "Add Second Assist?";
+      box.innerHTML = `
+        <div class="overlay-head"><span>${label}</span><button class="cancel-btn" onclick="closeFlow()">&#10005;</button></div>
+        <div class="choice-stack">
+          <button class="choice-btn" onclick="answerAssist(true)">YES</button>
+          <button class="choice-btn" onclick="answerAssist(false)">NO</button>
+        </div>
+      `;
+      return;
+    }
+
+    if (f.step === "penCard") {
+      const cards = ["None", "Green", "Yellow", "Red"];
+      box.innerHTML = `
+        <div class="overlay-head"><span>Penalty Card (#${f.player})</span><button class="cancel-btn" onclick="closeFlow()">&#10005;</button></div>
+        <div class="choice-stack">
+          ${cards.map(c => `<button class="choice-btn" onclick="pickCard('${c}')">${c}</button>`).join("")}
+        </div>
+      `;
+      return;
+    }
+
+    if (f.step === "penTime") {
+      const presets = state.format === "box" ? [120, 300, 600] : [30, 60, 120, 180];
+      box.innerHTML = `
+        <div class="overlay-head"><span>Penalty Time (${f.card})</span><button class="cancel-btn" onclick="closeFlow()">&#10005;</button></div>
+        <div class="preset-row">
+          ${presets.map(sec => `<button class="num-btn" onclick="setPenPreset(${sec})">${formatTime(sec)}</button>`).join("")}
+        </div>
+        <div class="manual-row">
+          <button class="sc-btn" onclick="adjustPenTime(-15)">-15s</button>
+          <button class="sc-btn" onclick="adjustPenTime(-5)">-5s</button>
+          <strong style="font-size:16px">${formatTime(f.penSec)}</strong>
+          <button class="sc-btn" onclick="adjustPenTime(5)">+5s</button>
+          <button class="sc-btn" onclick="adjustPenTime(15)">+15s</button>
+        </div>
+        <button class="choice-btn" style="background:#16a34a;color:#fff" onclick="finishPenalty()">Start Penalty (${formatTime(f.penSec)})</button>
+      `;
+    }
+  }
+
+  function pickFaceoffPlayer(num) {
+    if (state.flow.step === "homePlayer") {
+      state.flow.homeNum = num;
+      state.flow.step = "awayPlayer";
+    } else {
+      state.flow.awayNum = num;
+      state.flow.step = "winner";
+    }
+    renderFlowOverlay();
+  }
+
+  function finishFaceoff(winnerSide) {
+    const f = state.flow;
+    recordLog({
+      side: winnerSide,
+      type: "faceoff",
+      period: state.currentPeriod,
+      time: formatTime(state.gameSeconds),
+      homePlayer: f.homeNum,
+      awayPlayer: f.awayNum,
+      text: `FO/Draw Won by ${winnerSide.toUpperCase()} (H:#${f.homeNum} vs A:#${f.awayNum})`
+    });
+    if (state.shotClockMax > 0) state.shotSeconds = state.shotClockMax;
+    renderClocks();
+    closeFlow();
+  }
+
+  function pickPlayer(num) {
+    const f = state.flow;
+    if (f.step === "player") {
+      f.player = num;
+      if (f.type === "goal") {
+        f.step = "askAssist1";
+        renderFlowOverlay();
+        return;
+      }
+      if (f.type === "penalty") {
+        f.step = "penCard";
+        renderFlowOverlay();
+        return;
+      }
+      const labels = {
+        shotSave: "Shot Saved",
+        shotWide: "Shot Wide",
+        groundball: "Groundball",
+        turnover: "Turnover",
+        causedTO: "Caused Turnover"
+      };
+      recordLog({
+        side: f.side,
+        type: f.type,
+        player: num,
+        period: state.currentPeriod,
+        time: formatTime(state.gameSeconds),
+        text: `${f.side.toUpperCase()} #${num} ${labels[f.type] || f.type}`
+      });
+      closeFlow();
+      return;
+    }
+
+    if (f.step === "assist1") {
+      f.assist1 = num;
+      if (state.secondAssist) {
+        f.step = "askAssist2";
+        renderFlowOverlay();
+      } else {
+        finishGoal();
+      }
+      return;
+    }
+
+    if (f.step === "assist2") {
+      f.assist2 = num;
+      finishGoal();
+    }
+  }
+
+  function answerAssist(yes) {
+    const f = state.flow;
+    if (f.step === "askAssist1") {
+      if (yes) {
+        f.step = "assist1";
+        renderFlowOverlay();
+      } else {
+        finishGoal();
+      }
+    } else if (f.step === "askAssist2") {
+      if (yes) {
+        f.step = "assist2";
+        renderFlowOverlay();
+      } else {
+        finishGoal();
+      }
+    }
+  }
+
+  function finishGoal() {
+    const f = state.flow;
+    if (f.side === "home") state.homeScore++;
+    else state.awayScore++;
+
+    let astText = "Unassisted";
+    if (f.assist1 !== null && f.assist2 !== null) astText = `Ast: #${f.assist1}, #${f.assist2}`;
+    else if (f.assist1 !== null) astText = `Ast: #${f.assist1}`;
+
+    recordLog({
+      side: f.side,
+      type: "goal",
+      player: f.player,
+      assist1: f.assist1,
+      assist2: f.assist2,
+      period: state.currentPeriod,
+      time: formatTime(state.gameSeconds),
+      text: `GOAL ${f.side.toUpperCase()} #${f.player} (${astText})`
+    });
+
+    if (state.shotClockMax > 0) state.shotSeconds = state.shotClockMax;
+    renderClocks();
+    closeFlow();
+  }
+
+  function pickCard(card) {
+    state.flow.card = card;
+    state.flow.step = "penTime";
+    renderFlowOverlay();
+  }
+
+  function setPenPreset(sec) {
+    state.flow.penSec = sec;
+    renderFlowOverlay();
+  }
+
+  function adjustPenTime(delta) {
+    state.flow.penSec = Math.max(10, state.flow.penSec + delta);
+    renderFlowOverlay();
+  }
+
+  function finishPenalty() {
+    const f = state.flow;
+    const penObj = {
+      id: Date.now() + Math.random(),
+      player: f.player,
+      card: f.card,
+      remaining: f.penSec
+    };
+    state.penalties[f.side].push(penObj);
+
+    recordLog({
+      side: f.side,
+      type: "penalty",
+      player: f.player,
+      card: f.card,
+      penId: penObj.id,
+      period: state.currentPeriod,
+      time: formatTime(state.gameSeconds),
+      text: `PENALTY ${f.side.toUpperCase()} #${f.player} [${f.card}] (${formatTime(f.penSec)})`
+    });
+    closeFlow();
+  }
+
+  function recordLog(entry) {
+    state.logs.push(entry);
+    document.getElementById("ticker").textContent = `[P${entry.period} ${entry.time}] ${entry.text}`;
+    renderAll();
+  }
+
+  function undoLast() {
+    const last = state.logs.pop();
+    if (!last) return;
+    if (last.type === "goal") {
+      if (last.side === "home") state.homeScore = Math.max(0, state.homeScore - 1);
+      else state.awayScore = Math.max(0, state.awayScore - 1);
+    }
+    if (last.type === "penalty" && last.penId) {
+      state.penalties[last.side] = state.penalties[last.side].filter(p => p.id !== last.penId);
+    }
+    const prev = state.logs[state.logs.length - 1];
+    document.getElementById("ticker").textContent = prev
+      ? `[P${prev.period} ${prev.time}] ${prev.text}`
+      : "Undid last action.";
+    renderAll();
+  }
+
+  function releasePenalty(side, id) {
+    state.penalties[side] = state.penalties[side].filter(p => p.id !== id);
+    renderPenalties();
+  }
+
+  function renderPenalties() {
+    const cardColors = { None: "#94a3b8", Green: "#22c55e", Yellow: "#eab308", Red: "#ef4444" };
+    ["home", "away"].forEach(side => {
+      const box = document.getElementById(side + "Penalties");
+      box.innerHTML = state.penalties[side].map(p => `
+        <div class="pen-pill" onclick="releasePenalty('${side}', ${p.id})" title="Tap to release">
+          <span><span class="card-dot" style="background:${cardColors[p.card] || '#94a3b8'}"></span>#${p.player}</span>
+          <span>${formatTime(p.remaining)}</span>
+        </div>
+      `).join("");
+    });
+  }
+
+  function renderSummaries() {
+    const cols = [];
+    for (let i = 1; i <= state.regPeriods; i++) cols.push(String(i));
+    cols.push("OT", "TOT");
+
+    const showFO = state.format === "field" || state.format === "box";
+
+    ["home", "away"].forEach(side => {
+      const opp = side === "home" ? "away" : "home";
+      const wrap = document.getElementById(side + "SummaryWrap");
+
+      const filterCol = (log, col) => {
+        if (col === "TOT") return true;
+        if (col === "OT") return log.period.startsWith("OT");
+        return log.period === col;
+      };
+
+      const rows = [
+        {
+          label: "GB",
+          vals: cols.map(c => state.logs.filter(l => filterCol(l, c) && l.side === side && l.type === "groundball").length)
+        },
+        {
+          label: "SV",
+          vals: cols.map(c => state.logs.filter(l => filterCol(l, c) && l.side === opp && l.type === "shotSave").length)
+        },
+        {
+          label: "SW",
+          vals: cols.map(c => state.logs.filter(l => filterCol(l, c) && l.side === side && l.type === "shotWide").length)
+        },
+        {
+          label: "SV%",
+          vals: cols.map(c => {
+            const saves = state.logs.filter(l => filterCol(l, c) && l.side === opp && l.type === "shotSave").length;
+            const ga = state.logs.filter(l => filterCol(l, c) && l.side === opp && l.type === "goal").length;
+            const sog = saves + ga;
+            return sog === 0 ? "&mdash;" : Math.round((saves / sog) * 100) + "%";
+          })
+        }
+      ];
+
+      if (showFO) {
+        rows.push({
+          label: "FO%",
+          vals: cols.map(c => {
+            const wins = state.logs.filter(l => filterCol(l, c) && l.type === "faceoff" && l.side === side).length;
+            const tot = state.logs.filter(l => filterCol(l, c) && l.type === "faceoff").length;
+            return tot === 0 ? "&mdash;" : Math.round((wins / tot) * 100) + "%";
+          })
+        });
+      }
+
+      wrap.innerHTML = `
+        <table class="mini-table">
+          <thead>
+            <tr><th>${side.toUpperCase()}</th>${cols.map(c => `<th>${c}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `<tr><td>${r.label}</td>${r.vals.map(v => `<td>${v}</td>`).join("")}</tr>`).join("")}
+          </tbody>
+        </table>
+      `;
+    });
+  }
+
+  function openSettings() {
+    document.getElementById("homeSwatches").innerHTML = COLORS.map(c =>
+      `<div class="swatch" style="background:${c.hex}" onclick="state.homeColor='${c.hex}';applyWingColors()"></div>`
+    ).join("");
+    document.getElementById("awaySwatches").innerHTML = COLORS.map(c =>
+      `<div class="swatch" style="background:${c.hex}" onclick="state.awayColor='${c.hex}';applyWingColors()"></div>`
+    ).join("");
+
+    document.getElementById("eventToggles").innerHTML = ALL_EVENTS.map(ev => `
+      <label class="toggle-item">
+        <input type="checkbox" ${state.enabledEvents.includes(ev.id) ? "checked" : ""} onchange="toggleEventBtn('${ev.id}', this.checked)" />
+        <span>${ev.label}</span>
+      </label>
+    `).join("");
+
+    document.getElementById("settingsModal").style.display = "flex";
+  }
+
+  function closeSettings() {
+    document.getElementById("settingsModal").style.display = "none";
+  }
+
+  function toggleEventBtn(id, enabled) {
+    if (enabled && !state.enabledEvents.includes(id)) {
+      state.enabledEvents.push(id);
+    } else if (!enabled) {
+      state.enabledEvents = state.enabledEvents.filter(e => e !== id);
+    }
+    renderEventButtons();
+  }
+
+  function renderAll() {
+    document.getElementById("homeScore").textContent = state.homeScore;
+    document.getElementById("awayScore").textContent = state.awayScore;
+    buildPeriodDropdown();
+    renderClocks();
+    renderPenalties();
+    renderSummaries();
+    applyWingColors();
+  }
+
+  setTheme("dark");
+  renderAll();
+</script>
+</body>
+</html>
